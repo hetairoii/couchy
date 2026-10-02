@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from app.agent import companion as agent
 from app.analytics import metrics as m
+from app.analytics import tabpfn_risk
 from app.companions import COMPANIONS, get_companion
 from app.config import settings
 from app.models import Device, DoseEvent, Medication, VoiceReply, get_session, new_link_code
@@ -217,7 +218,22 @@ def insights(days: int = 7, device: Device = Depends(auth), session: Session = D
     now = datetime.utcnow()
     doses = dose_dicts(session, device.id, days, now)
     return {"metrics": m.compute_metrics(doses), "daily": m.daily_series(doses),
-            "week_over_week": m.week_over_week(dose_dicts(session, device.id, 14, now), now)}
+            "week_over_week": m.week_over_week(dose_dicts(session, device.id, 14, now), now),
+            "late_risk": late_risk(session, device.id, now)}
+
+
+def late_risk(session: Session, device_id: str, now: datetime) -> dict | None:
+    """TabPFN probability that each still-pending dose in the next 24h is late. None if unavailable."""
+    upcoming = session.exec(select(DoseEvent).where(
+        DoseEvent.device_id == device_id, DoseEvent.status == "pending",
+        DoseEvent.scheduled_at > now, DoseEvent.scheduled_at <= now + timedelta(hours=24))).all()
+    if not upcoming:
+        return None
+    history = dose_dicts(session, device_id, 60, now)
+    try:
+        return tabpfn_risk.predict_late_risk(history, [u.model_dump() for u in upcoming])
+    except Exception:  # never let the optional model break insights
+        return None
 
 
 @router.post("/devices/{device_id}/family/link-code")

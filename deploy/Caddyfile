@@ -1,0 +1,4 @@
+# Replace with your droplet's domain, or use <IP>.sslip.io (e.g. 203-0-113-10.sslip.io)
+{$DOMAIN} {
+	reverse_proxy api:8000
+}
