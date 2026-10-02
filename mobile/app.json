@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Couchy",
+    "slug": "couchy",
+    "scheme": "couchy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Couchy listens when you hold the button to talk to your companion.",
+        "NSPhotoLibraryUsageDescription": "Choose a photo of the medicine so it is easy to recognize."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["RECORD_AUDIO", "POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "VIBRATE"],
+      "package": "app.couchy.mobile"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-audio",
+      ["expo-notifications", { "color": "#2F6F5E" }],
+      "expo-image-picker"
+    ]
+  }
+}
