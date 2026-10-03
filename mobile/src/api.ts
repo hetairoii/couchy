@@ -1,7 +1,7 @@
 import { getKV, setKV } from './db';
 import type { Dose, Med, Profile } from './types';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8000'; // Android emulator -> host
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8010'; // Android emulator -> host
 
 type Creds = { deviceId: string; apiKey: string };
 
