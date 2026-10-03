@@ -5,7 +5,7 @@ import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteMed, listMeds, saveMed } from '../src/db';
 import { parseTimes } from '../src/doses';
-import { requestPermissions, rescheduleAll } from '../src/notifications';
+import { isExpoGo, requestPermissions, rescheduleAll } from '../src/notifications';
 import { prefetchMessages, pushConfig } from '../src/sync';
 import { colors, TOUCH } from '../src/theme';
 import type { Med } from '../src/types';
@@ -44,7 +44,8 @@ export default function Meds() {
     await saveMed({ ...editing, name: editing.name.trim(), times });
     setEditing(null);
     await refresh();
-    if (await requestPermissions()) await rescheduleAll();
+    if (isExpoGo) Alert.alert('Saved', 'Reminders only fire in a development build; Expo Go cannot schedule them.');
+    else if (await requestPermissions()) await rescheduleAll();
     else Alert.alert('Notifications are off', 'Reminders need notification permission. You can enable it in Settings.');
     void pushConfig().then(prefetchMessages);
   }

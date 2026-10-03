@@ -17,6 +17,7 @@ services:
     depends_on: [ollama]
     volumes:
       - data:/data
+    ports: ["8000:8000"]
 
   caddy:
     image: caddy:2

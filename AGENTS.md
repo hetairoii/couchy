@@ -6,7 +6,7 @@ understands their spoken replies, and alerts family via Telegram. Built for the 
 
 ## Stack
 - mobile/: Expo SDK (latest) + TypeScript + expo-router, expo-sqlite, expo-notifications, expo-audio
-  (play + record), expo-file-system, @react-native-community/netinfo. Must run in Expo Go.
+  (play + record), expo-file-system, @react-native-community/netinfo. Runs in Expo Go for UI/voice testing; notifications need a development build (expo-notifications is skipped in Expo Go).
 - server/: Python 3.11+, FastAPI, SQLModel (SQLite), APScheduler, httpx, pandas, python-telegram-bot,
   elevenlabs (official SDK), piper-tts (fallback), tabpfn, sentry-sdk (optional).
 - LLM: Gemma via Ollama (OLLAMA_URL, OLLAMA_MODEL default `gemma3:4b`). Always use Ollama structured

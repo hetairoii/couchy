@@ -1,16 +1,15 @@
-import * as Notifications from 'expo-notifications';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { openDoseFromNotification } from '../src/reminders';
-import { setupNotifications } from '../src/notifications';
+import { N, setupNotifications, useLastResponse } from '../src/notifications';
 import { syncAll } from '../src/sync';
 import { colors } from '../src/theme';
 
 setupNotifications();
 
 export default function RootLayout() {
-  const lastResponse = Notifications.useLastNotificationResponse();
+  const lastResponse = useLastResponse();
 
   // Cold start or tap: open the dose screen for the notification that was tapped.
   useEffect(() => {
@@ -21,9 +20,9 @@ export default function RootLayout() {
 
   // Foreground delivery: stamp reminded_at without navigating away from what the user is doing.
   useEffect(() => {
-    const sub = Notifications.addNotificationReceivedListener((n) =>
+    const sub = N?.addNotificationReceivedListener((n) =>
       void openDoseFromNotification(n.request.content.data ?? {}, false));
-    return () => sub.remove();
+    return () => sub?.remove();
   }, []);
 
   useEffect(() => { void syncAll(); }, []);
