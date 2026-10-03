@@ -159,8 +159,11 @@ def list_companions():
 
 @router.get("/companions/{companion_id}/preview")
 async def companion_preview(companion_id: str):
-    file = await tts.synthesize(get_companion(companion_id)["greeting"], companion_id)
-    return {"audio_url": f"/audio/{file}"}
+    try:
+        file = await tts.synthesize(get_companion(companion_id)["greeting"], companion_id)
+    except Exception as exc:
+        raise HTTPException(503, f"No server voice available: {exc}")
+    return {"audio_url": f"/audio/{file}", "engine": "elevenlabs" if file.endswith(".mp3") else "piper"}
 
 
 # ---- spoken replies ---------------------------------------------------------------
@@ -247,4 +250,5 @@ def link_code(device: Device = Depends(auth), session: Session = Depends(get_ses
 
 @router.get("/health")
 def health():
-    return {"ok": True, "model": settings.ollama_model, "voice": settings.voice_provider}
+    return {"ok": True, "model": settings.ollama_model, "voice": settings.voice_provider,
+            "elevenlabs_key_set": bool(settings.elevenlabs_key)}

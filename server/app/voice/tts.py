@@ -60,8 +60,13 @@ async def synthesize(text: str, companion_id: str, model: str = "eleven_v3") -> 
     if provider == "elevenlabs" and settings.elevenlabs_key:
         try:
             data = await _elevenlabs_tts(text, get_companion(companion_id)["voice_id"], model)
+        except httpx.HTTPStatusError as exc:
+            log.warning("ElevenLabs TTS failed for voice %s: HTTP %s %s; falling back to Piper",
+                        get_companion(companion_id)["voice_id"], exc.response.status_code, exc.response.text[:300])
         except Exception as exc:
             log.warning("ElevenLabs TTS failed (%s); falling back to Piper", exc)
+    elif provider == "elevenlabs":
+        log.warning("ELEVENLABS_API_KEY is empty; falling back to Piper")
     if data is None:
         data, ext = _piper_tts(text, companion_id), "wav"
     name = f"{key}.{ext}"
