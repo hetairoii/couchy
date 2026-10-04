@@ -25,3 +25,7 @@ mobile/modules/**/android/.gradle/
 
 # Scratch files from session curation (contain personal data)
 .scratch/
+
+#self-use docs
+docs/demo-script.md
+docs/devto-post.md
