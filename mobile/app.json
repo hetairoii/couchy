@@ -22,7 +22,16 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["RECORD_AUDIO", "POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "VIBRATE"],
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
       "package": "app.couchy.mobile"
     },
     "web": {
@@ -32,8 +41,19 @@
       "expo-router",
       "expo-sqlite",
       "expo-audio",
-      ["expo-notifications", { "color": "#2F6F5E" }],
+      [
+        "expo-notifications",
+        {
+          "color": "#2F6F5E"
+        }
+      ],
       "expo-image-picker"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c8be6c5d-fe46-4f50-a7a4-0336168582e0"
+      }
+    }
   }
 }
