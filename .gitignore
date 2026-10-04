@@ -19,3 +19,6 @@ mobile/assets/character icons/
 # Gradle build output of local native modules
 mobile/modules/**/android/build/
 mobile/modules/**/android/.gradle/
+
+# Files written by agent tooling installers
+.agents/
