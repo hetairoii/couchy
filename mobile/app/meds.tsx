@@ -1,18 +1,19 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Image, Pressable, Text, View } from 'react-native';
+import { alarmAvailable, alarmStatus } from '../src/alarm';
 import { deleteMed, listMeds, saveMed } from '../src/db';
 import { parseTimes } from '../src/doses';
-import { alarmAvailable, alarmStatus } from '../src/alarm';
+import { Icon } from '../src/Icon';
 import { isExpoGo, requestPermissions, rescheduleAll } from '../src/notifications';
 import { syncVoice } from '../src/sync';
-import { colors, TOUCH } from '../src/theme';
+import { colors, fonts, INK, TOUCH } from '../src/theme';
 import type { Med } from '../src/types';
-import { BigButton, Body, Card, Field, Title } from '../src/ui';
+import { BigButton, Body, Card, Field, Screen, SectionTitle } from '../src/ui';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const PALETTE = ['#E9B7B0', '#B7C9E2', '#F6D98B', '#C6D8B5', '#D8B7E2', '#F2C1A0'];
 const blank = (): Med => ({
   id: `med_${Date.now()}`, name: '', dosage: '', instructions: '', color: PALETTE[0],
@@ -70,65 +71,66 @@ export default function Meds() {
 
   if (editing) {
     return (
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
-          <Title>{meds.some((m) => m.id === editing.id) ? 'Edit medication' : 'New medication'}</Title>
-          <Field label="Name" value={editing.name} onChangeText={(name) => setEditing({ ...editing, name })} placeholder="Metformin" />
-          <Field label="Dose" value={editing.dosage} onChangeText={(dosage) => setEditing({ ...editing, dosage })} placeholder="500 mg, 1 tablet" />
-          <Field label="Instructions (optional)" value={editing.instructions}
-            onChangeText={(instructions) => setEditing({ ...editing, instructions })} placeholder="With food" />
-          <Field label="Times (24h, comma separated)" value={timesText} onChangeText={setTimesText}
-            placeholder="08:00, 20:00" autoCapitalize="none" />
-          <Body>Days</Body>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {DAYS.map((d, i) => {
-              const on = editing.days.includes(i);
-              return (
-                <Pressable key={i} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
-                  accessibilityLabel={['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][i]}
-                  onPress={() => setEditing({ ...editing, days: on ? editing.days.filter((x) => x !== i) : [...editing.days, i].sort() })}
-                  style={{ flex: 1, minHeight: TOUCH, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: on ? colors.primary : colors.card, borderWidth: 2, borderColor: colors.primary }}>
-                  <Text style={{ fontSize: 20, fontWeight: '800', color: on ? '#fff' : colors.primary }}>{d}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Body>Color</Body>
-          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-            {PALETTE.map((c) => (
-              <Pressable key={c} accessibilityRole="button" accessibilityLabel={`Color ${c}`}
-                onPress={() => setEditing({ ...editing, color: c })}
-                style={{ width: TOUCH, height: TOUCH, borderRadius: 32, backgroundColor: c,
-                  borderWidth: editing.color === c ? 5 : 1, borderColor: editing.color === c ? colors.primary : colors.border }} />
-            ))}
-          </View>
-          <BigButton label={photo ? 'Change photo' : 'Add a photo (optional)'} variant="secondary" onPress={pickPhoto} />
-          {photo && <Image source={{ uri: photo }} style={{ width: '100%', height: 160, borderRadius: 16 }} />}
-          <BigButton label="Save" onPress={save} />
-          <BigButton label="Cancel" variant="secondary" onPress={() => setEditing(null)} />
-        </ScrollView>
-      </SafeAreaView>
+      <Screen>
+        <SectionTitle>{meds.some((m) => m.id === editing.id) ? 'Edit medication' : 'New medication'}</SectionTitle>
+        <Field label="Name" value={editing.name} onChangeText={(name) => setEditing({ ...editing, name })} placeholder="Metformin" />
+        <Field label="Dose" value={editing.dosage} onChangeText={(dosage) => setEditing({ ...editing, dosage })} placeholder="500 mg, 1 tablet" />
+        <Field label="Instructions (optional)" value={editing.instructions}
+          onChangeText={(instructions) => setEditing({ ...editing, instructions })} placeholder="With food" />
+        <Field label="Times (24h, comma separated)" value={timesText} onChangeText={setTimesText}
+          placeholder="08:00, 20:00" autoCapitalize="none" />
+
+        <Body style={{ fontFamily: fonts.strong }}>Days</Body>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {DAYS.map((d, i) => {
+            const on = editing.days.includes(i);
+            return (
+              <Pressable key={i} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+                accessibilityLabel={DAY_NAMES[i]}
+                onPress={() => setEditing({ ...editing, days: on ? editing.days.filter((x) => x !== i) : [...editing.days, i].sort() })}
+                style={{ flex: 1, minHeight: TOUCH, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: on ? colors.primary : colors.card, borderWidth: INK, borderColor: colors.ink }}>
+                <Text style={{ fontFamily: fonts.title, fontSize: 22, color: on ? colors.primaryText : colors.ink }}>{d}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Body style={{ fontFamily: fonts.strong }}>Color</Body>
+        <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
+          {PALETTE.map((c) => (
+            <Pressable key={c} accessibilityRole="button" accessibilityLabel={`Color ${c}`}
+              onPress={() => setEditing({ ...editing, color: c })}
+              style={{ width: TOUCH, height: TOUCH, borderRadius: TOUCH / 2, backgroundColor: c, borderWidth: INK,
+                borderColor: colors.ink, alignItems: 'center', justifyContent: 'center' }}>
+              {editing.color === c && <Icon name="check" size={32} stroke={3.4} />}
+            </Pressable>
+          ))}
+        </View>
+
+        <BigButton icon="plus" label={photo ? 'Change photo' : 'Add a photo (optional)'} variant="secondary" onPress={pickPhoto} />
+        {photo && <Image source={{ uri: photo }} style={{ width: '100%', height: 160, borderRadius: 16, borderWidth: INK, borderColor: colors.ink }} />}
+        <BigButton icon="check" label="Save" onPress={save} />
+        <BigButton label="Cancel" variant="secondary" onPress={() => setEditing(null)} />
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-        {meds.length === 0 && <Body muted>No medications yet. Add the first one to start the reminders.</Body>}
-        {meds.map((m) => (
-          <Card key={m.id} style={{ borderLeftWidth: 12, borderLeftColor: m.color }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text }}>{m.name}</Text>
-            <Body>{[m.dosage, m.times.join(' · ')].filter(Boolean).join(' — ')}</Body>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ flex: 1 }}><BigButton label="Edit" variant="secondary" onPress={() => edit(m)} /></View>
-              <View style={{ flex: 1 }}><BigButton label="Delete" variant="danger" onPress={() => remove(m)} /></View>
-            </View>
-          </Card>
-        ))}
-        <BigButton label="Add medication" onPress={() => edit(blank())} />
-        <BigButton label="Done" variant="secondary" onPress={() => router.replace('/')} />
-      </ScrollView>
-    </SafeAreaView>
+    <Screen>
+      {meds.length === 0 && <Body muted>No medications yet. Add the first one to start the reminders.</Body>}
+      {meds.map((m) => (
+        <Card key={m.id} style={{ borderLeftWidth: 16, borderLeftColor: m.color }}>
+          <Text style={{ fontFamily: fonts.title, fontSize: 28, color: colors.ink }}>{m.name}</Text>
+          <Body>{[m.dosage, m.times.join(' · ')].filter(Boolean).join(' — ')}</Body>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}><BigButton icon="edit" label="Edit" variant="secondary" onPress={() => edit(m)} /></View>
+            <View style={{ flex: 1 }}><BigButton icon="trash" label="Delete" variant="danger" onPress={() => remove(m)} /></View>
+          </View>
+        </Card>
+      ))}
+      <BigButton icon="plus" label="Add medication" onPress={() => edit(blank())} />
+      <BigButton label="Done" variant="secondary" onPress={() => router.replace('/')} />
+    </Screen>
   );
 }

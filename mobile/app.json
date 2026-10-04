@@ -46,7 +46,8 @@
         }
       ],
       "expo-image-picker",
-      "./plugins/withAlarmActivity"
+      "./plugins/withAlarmActivity",
+      "expo-font"
     ],
     "extra": {
       "router": {},

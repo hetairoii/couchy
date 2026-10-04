@@ -1,8 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, Vibration, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Text, Vibration, View } from 'react-native';
 import { absolute, ApiError, sendVoiceReply } from '../../src/api';
 import { refreshAlarmAudio, stopAlarm } from '../../src/alarm';
 import { playPhrase, playUri, stopPlayback } from '../../src/audio';
@@ -11,10 +10,11 @@ import { companionById } from '../../src/companions';
 import { getDose, getProfile, listMeds, nextMessage, updateDose } from '../../src/db';
 import { scheduleSnooze } from '../../src/notifications';
 import { flushOutbox } from '../../src/sync';
-import { colors, TOUCH } from '../../src/theme';
+import { colors, fonts } from '../../src/theme';
 import type { Dose, Med, Profile } from '../../src/types';
 import { useVoiceRecorder } from '../../src/useVoiceRecorder';
-import { BigButton, Body, Card, Title } from '../../src/ui';
+import { Icon } from '../../src/Icon';
+import { BigButton, Body, Card, Screen } from '../../src/ui';
 import { HelpButton } from '../../src/HelpButton';
 
 const MAX_SNOOZES = 3;
@@ -132,48 +132,51 @@ export default function DoseScreen() {
   const done = dose.status === 'taken' || dose.status === 'skipped';
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-        <View style={{ alignItems: 'center', gap: 8 }}>
-          <Avatar companion={companion} size={112} />
-          <Body muted>{companion.name}</Body>
-        </View>
+    <Screen>
+      <View style={{ alignItems: 'center', gap: 10 }}>
+        <Avatar companion={companion} size={120} />
+        <Text style={{ fontFamily: fonts.title, fontSize: 24, color: colors.ink }}>{companion.name}</Text>
+      </View>
 
-        {!!said && <Card><Text style={{ fontSize: 24, color: colors.text, lineHeight: 32 }}>{said}</Text></Card>}
-
-        <Card style={{ borderLeftWidth: 14, borderLeftColor: med.color }}>
-          <Text style={{ fontSize: 36, fontWeight: '800', color: colors.text }}>{med.name}</Text>
-          {!!med.dosage && <Title>{med.dosage}</Title>}
-          {!!med.instructions && <Body>{med.instructions}</Body>}
-          <Body muted>Scheduled for {localTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Body>
+      {!!said && (
+        <Card style={{ backgroundColor: colors.card }}>
+          <Text style={{ fontFamily: fonts.body, fontSize: 24, color: colors.ink, lineHeight: 34 }}>{said}</Text>
         </Card>
+      )}
 
-        {done ? (
-          <Card><Text style={{ fontSize: 30, fontWeight: '800', color: colors.primary }}>
-            {dose.status === 'taken' ? 'Taken ✓ Great job!' : 'Skipped'}
-          </Text></Card>
-        ) : (
-          <>
-            <BigButton label="I took it ✓" onPress={took} />
-            <BigButton label={dose.snoozeCount >= MAX_SNOOZES ? 'No more snoozes' : 'Remind me in 10 min'}
-              variant="secondary" onPress={snooze} disabled={dose.snoozeCount >= MAX_SNOOZES} />
-            <Pressable accessibilityRole="button" accessibilityLabel={`Talk to ${companion.name}`}
-              onPress={talk} disabled={busy}
-              style={{ minHeight: TOUCH + 16, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-                backgroundColor: recording ? colors.danger : colors.accent, opacity: busy ? 0.6 : 1,
-                paddingHorizontal: 12 }}>
-              <Text style={{ fontSize: 24, fontWeight: '800', color: recording ? '#fff' : '#1B1B1B', textAlign: 'center' }}>
-                {busy ? 'Listening...' : recording ? 'Tap here to send' : `🎤 Tell ${companion.name}`}
-              </Text>
-            </Pressable>
-            {recording && <Card><Body>I'm listening. Say what you want, then tap again.</Body></Card>}
-            {heard && <Card><Body muted>You said:</Body><Body>"{heard}"</Body></Card>}
-            {!!notice && <Card><Body>{notice}</Body></Card>}
-            <HelpButton />
-            <BigButton label="Skip this dose" variant="secondary" onPress={skip} />
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+      <Card style={{ borderLeftWidth: 18, borderLeftColor: med.color }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Icon name="pill" size={30} />
+          <Text style={{ fontFamily: fonts.title, fontSize: 36, color: colors.ink, flex: 1, lineHeight: 44 }}>{med.name}</Text>
+        </View>
+        {!!med.dosage && <Text style={{ fontFamily: fonts.strong, fontSize: 28, color: colors.ink }}>{med.dosage}</Text>}
+        {!!med.instructions && <Body>{med.instructions}</Body>}
+        <Body muted>Scheduled for {localTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Body>
+      </Card>
+
+      {done ? (
+        <Card style={{ backgroundColor: '#DCE8DD' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Icon name="check" size={36} color={colors.primary} stroke={3.6} />
+            <Text style={{ fontFamily: fonts.title, fontSize: 30, color: colors.ink, flex: 1 }}>
+              {dose.status === 'taken' ? 'Taken. Great job!' : 'Skipped'}
+            </Text>
+          </View>
+        </Card>
+      ) : (
+        <>
+          <BigButton big icon="check" label="I took it" onPress={took} />
+          <BigButton icon="clock" label={dose.snoozeCount >= MAX_SNOOZES ? 'No more snoozes' : 'Remind me in 10 min'}
+            variant="secondary" onPress={snooze} disabled={dose.snoozeCount >= MAX_SNOOZES} />
+          <BigButton big icon="mic" variant={recording ? 'danger' : 'accent'} disabled={busy}
+            label={busy ? 'Listening...' : recording ? 'Tap here to send' : `Tell ${companion.name}`} onPress={talk} />
+          {recording && <Card><Body>I'm listening. Say what you want, then tap again.</Body></Card>}
+          {heard && <Card><Body muted>You said:</Body><Body>"{heard}"</Body></Card>}
+          {!!notice && <Card><Body>{notice}</Body></Card>}
+          <HelpButton />
+          <BigButton icon="skip" label="Skip this dose" variant="secondary" onPress={skip} />
+        </>
+      )}
+    </Screen>
   );
 }

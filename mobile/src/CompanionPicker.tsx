@@ -4,7 +4,8 @@ import { getPreview, absolute } from './api';
 import { playUri, stopPlayback } from './audio';
 import { Avatar } from './Avatar';
 import { COMPANIONS } from './companions';
-import { colors } from './theme';
+import { Icon } from './Icon';
+import { colors, fonts } from './theme';
 import { Body, Card } from './ui';
 
 type Props = { value: string; onChange: (id: string) => void };
@@ -26,19 +27,20 @@ export function CompanionPicker({ value, onChange }: Props) {
   }
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={{ gap: 14 }}>
       {COMPANIONS.map((c) => {
         const selected = c.id === value;
         return (
           <Pressable key={c.id} accessibilityRole="button" accessibilityState={{ selected }}
             accessibilityLabel={`${c.name}. ${c.tagline}`} onPress={() => choose(c.id)}>
-            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 80,
-              borderWidth: selected ? 4 : 1, borderColor: selected ? colors.primary : colors.border }}>
+            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 96,
+              backgroundColor: selected ? c.color : colors.card }}>
               <Avatar companion={c} size={72} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>{c.name}</Text>
-                <Body muted>{c.tagline}</Body>
+                <Text style={{ fontFamily: fonts.title, fontSize: 26, color: colors.ink }}>{c.name}</Text>
+                <Body style={{ fontSize: 18, lineHeight: 24 }}>{c.tagline}</Body>
               </View>
+              {selected && <Icon name="check" size={32} />}
             </Card>
           </Pressable>
         );

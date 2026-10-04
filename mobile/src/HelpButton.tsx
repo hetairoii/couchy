@@ -1,12 +1,11 @@
 import * as Haptics from 'expo-haptics';
 import { useRef, useState } from 'react';
-import { Pressable, Text } from 'react-native';
 import { sendHelp } from './api';
 import { playPhrase } from './audio';
 import { queueHelp } from './sync';
-import { colors, TOUCH } from './theme';
+import { colors } from './theme';
 import { useVoiceRecorder } from './useVoiceRecorder';
-import { Body, Card } from './ui';
+import { BigButton, Body, Card } from './ui';
 
 type State = 'idle' | 'recording' | 'sending' | 'sent' | 'failed';
 
@@ -64,21 +63,13 @@ export function HelpButton() {
     }
   }
 
-  const busy = state === 'sending';
-  const label = busy ? 'Sending...'
-    : recording ? 'Tap here to send'
-      : '🆘 I need help';
+  const label = state === 'sending' ? 'Sending...' : recording ? 'Tap here to send' : 'I need help';
 
   return (
     <>
-      <Pressable accessibilityRole="button" accessibilityLabel="Ask my family for help" onPress={onPress}
-        disabled={busy}
-        style={{ minHeight: TOUCH + 24, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-          backgroundColor: colors.danger, opacity: busy ? 0.6 : 1, paddingHorizontal: 16 }}>
-        <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', textAlign: 'center' }}>{label}</Text>
-      </Pressable>
+      <BigButton big variant="danger" icon="alert" label={label} onPress={onPress} disabled={state === 'sending'} />
       {recording && (
-        <Card style={{ borderColor: colors.danger, borderWidth: 3 }}>
+        <Card style={{ borderColor: colors.red }}>
           <Body>Recording... Tell your family what is happening, then tap the red button again.</Body>
         </Card>
       )}

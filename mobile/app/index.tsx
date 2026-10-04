@@ -1,19 +1,24 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, Text, View } from 'react-native';
 import { Avatar } from '../src/Avatar';
 import { companionById } from '../src/companions';
 import { dosesBetween, ensureDose, getProfile, listMeds, updateDose } from '../src/db';
 import { dosesForDay } from '../src/doses';
-import { flushOutbox } from '../src/sync';
-import { colors } from '../src/theme';
-import type { Dose, Med, Profile } from '../src/types';
 import { HelpButton } from '../src/HelpButton';
-import { BigButton, Body, Card, Chip, Title } from '../src/ui';
+import { Icon } from '../src/Icon';
+import { flushOutbox } from '../src/sync';
+import { colors, fonts } from '../src/theme';
+import type { Dose, Med, Profile } from '../src/types';
+import { BigButton, Body, Card, Chip, Screen, SectionTitle, Title } from '../src/ui';
 
-const statusColor = (s: Dose['status']) =>
-  s === 'taken' ? colors.taken : s === 'missed' || s === 'skipped' ? colors.missed : colors.pending;
+const STATUS: Record<Dose['status'], { label: string; color: string; dark?: boolean }> = {
+  taken: { label: 'Taken', color: colors.primary },
+  missed: { label: 'Missed', color: colors.red },
+  skipped: { label: 'Skipped', color: colors.blue },
+  pending: { label: 'Waiting', color: colors.mustard, dark: true },
+  snoozed: { label: 'Waiting', color: colors.mustard, dark: true },
+};
 
 const fmt = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
@@ -46,54 +51,69 @@ export default function Home() {
 
   if (!profile) return null;
   const companion = companionById(profile.companionId);
-  const medName = (id: string) => meds.find((m) => m.id === id)?.name ?? 'Medication';
+  const med = (id: string) => meds.find((m) => m.id === id);
   const next = doses.find((d) => d.status === 'pending' || d.status === 'snoozed');
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <Avatar companion={companion} size={72} />
-          <View style={{ flex: 1 }}>
-            <Title>{greeting}, {profile.preferredName}</Title>
-            <Body muted>{companion.name} is with you today.</Body>
-          </View>
+    <Screen>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <Image source={require('../assets/brand/mark.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+        <Text style={{ fontFamily: fonts.title, fontSize: 30, color: colors.ink }}>Couchy</Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        <Avatar companion={companion} size={84} />
+        <View style={{ flex: 1 }}>
+          <Title>{greeting}, {profile.preferredName}!</Title>
+          <Body muted>{companion.name} is with you today.</Body>
         </View>
+      </View>
 
-        {next ? (
-          <Card style={{ borderColor: colors.primary, borderWidth: 3 }}>
-            <Body muted>Next pill</Body>
-            <Text style={{ fontSize: 34, fontWeight: '800', color: colors.text }}>{medName(next.medId)}</Text>
-            <Body>at {fmt(next.scheduledAt)}</Body>
-            <BigButton label="Open reminder" onPress={() => router.push(`/dose/${next.id}`)} />
-          </Card>
-        ) : (
-          <Card>
-            <Text style={{ fontSize: 28, fontWeight: '800', color: colors.primary }}>
-              {doses.length ? 'All done for today ✓' : 'No pills scheduled today'}
+      {next ? (
+        <Card style={{ backgroundColor: '#FFF1C9' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Icon name="clock" size={26} />
+            <Body style={{ fontFamily: fonts.strong }}>Next pill</Body>
+          </View>
+          <Text style={{ fontFamily: fonts.title, fontSize: 38, color: colors.ink, lineHeight: 46 }}>
+            {med(next.medId)?.name ?? 'Medication'}
+          </Text>
+          <Body>at {fmt(next.scheduledAt)}</Body>
+          <BigButton icon="pill" label="Open reminder" onPress={() => router.push(`/dose/${next.id}`)} />
+        </Card>
+      ) : (
+        <Card style={{ backgroundColor: '#DCE8DD' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Icon name="check" size={34} color={colors.primary} stroke={3.4} />
+            <Text style={{ fontFamily: fonts.title, fontSize: 28, color: colors.ink, flex: 1 }}>
+              {doses.length ? 'All done for today!' : 'No pills scheduled today'}
             </Text>
-            {!meds.length && <BigButton label="Add a medication" onPress={() => router.push('/meds')} />}
-          </Card>
-        )}
+          </View>
+          {!meds.length && <BigButton icon="plus" label="Add a medication" onPress={() => router.push('/meds')} />}
+        </Card>
+      )}
 
-        <Title>Today</Title>
-        {doses.map((d) => (
-          <Card key={d.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <SectionTitle>Today</SectionTitle>
+      {doses.map((d) => {
+        const m = med(d.medId);
+        const s = STATUS[d.status];
+        return (
+          <Card key={d.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12,
+            borderLeftWidth: 16, borderLeftColor: m?.color ?? colors.rose }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>{medName(d.medId)}</Text>
+              <Text style={{ fontFamily: fonts.title, fontSize: 24, color: colors.ink }}>{m?.name ?? 'Medication'}</Text>
               <Body muted>{fmt(d.scheduledAt)}</Body>
             </View>
-            <Chip label={d.status === 'taken' ? 'Taken' : d.status === 'missed' ? 'Missed' : d.status === 'skipped' ? 'Skipped' : 'Waiting'}
-              color={statusColor(d.status)} />
+            <Chip label={s.label} color={s.color} dark={s.dark} />
           </Card>
-        ))}
+        );
+      })}
 
-        <HelpButton />
-        <BigButton label="Medications" variant="secondary"onPress={() => router.push('/meds')} />
-        <BigButton label="Caregiver settings" variant="secondary" onPress={() => router.push('/settings')} />
-      </ScrollView>
-    </SafeAreaView>
+      <HelpButton />
+      <BigButton icon="pill" label="Medications" variant="secondary" onPress={() => router.push('/meds')} />
+      <BigButton icon="sliders" label="Caregiver settings" variant="secondary" onPress={() => router.push('/settings')} />
+    </Screen>
   );
 }
