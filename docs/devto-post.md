@@ -1,68 +1,123 @@
 ---
-title: "Couchy: a Gemma-powered companion that helps my grandmother remember her pills"
+title: "Couchy: a companion with a real voice so [PERSON] never misses a pill"
 published: false
 tags: devchallenge, weekendchallenge, hf26challenge
+cover_image: 
 ---
 
 *This is a submission for the [Hacktoberfest Weekend Challenge: Build for a Friend](https://dev.to/challenges/hacktoberfest-weekend-2026-10-01)*
 
 ## What I Built
 
-<!-- TODO: the story. Who is {PERSON}? What do they take, when? What went wrong before (forgotten doses, double doses, family worrying from afar)? Why a pill-box alarm was not enough. Keep it personal and specific. -->
+<!-- TODO (the heart of the post, 1-2 short paragraphs, specific and personal):
+     Who is [PERSON]? What do they take and when? What went wrong before (forgotten doses, a double dose,
+     the family worrying from far away)? Why a phone alarm or a pill box was not enough. -->
 
-Couchy is a mobile app with a warm AI companion. At each dose it speaks to {PERSON} in a voice they chose, they can answer out loud ("I already took it after breakfast", "I feel a bit dizzy"), and their family gets Telegram alerts and a spoken weekly postcard when something looks off.
+Couchy is an Android app for [PERSON]: a warm companion that reminds them to take their pills, in a voice they
+picked, and keeps their family in the loop.
+
+- **A real alarm.** It rings like an alarm clock: on the alarm audio stream (so it sounds even if the phone is
+  muted or in Do Not Disturb), it wakes the screen and opens over the lock screen, and the companion says the
+  name of the medicine out loud until [PERSON] answers.
+- **Four companions** (Grace, Walter, Sunny, Arthur), each with their own voice and personality.
+- **Talk back.** [PERSON] can say "I already took it after breakfast" or "I feel a bit dizzy" and the companion
+  understands, answers, marks the dose, and tells the family if it sounds worrying.
+- **A help button.** One tap, a short voice note, and every relative gets an urgent Telegram alert with the audio.
+- **Family peace of mind.** A Telegram bot alerts relatives when a dose is late (60 min by default), when there
+  has been no activity for a while (3 h by default, configurable, quiet at night), and on request sends adherence
+  stats: how many pills are taken, how late, how consistent.
 
 ## Demo
 
-<!-- TODO: video (<= 2 min, narrated with ElevenLabs), GIFs: reminder screen, voice reply, Telegram alert, weekly postcard -->
+<!-- TODO: embed the video (<= 2 min):  {% embed https://www.youtube.com/watch?v=XXXXXXXX %}
+     Add 2-3 screenshots or GIFs: the alarm over the lock screen, the dose screen, the Telegram alert. -->
 
-## What {PERSON} said
+APK: <!-- TODO: link to the GitHub Release -->  ·  Backend: https://couchy-api.onrender.com/health
 
-<!-- TODO: their reaction, a quote, a photo of them using it. This is the "hand it over" bonus. -->
+## What [PERSON] said
+
+<!-- TODO: their reaction, a quote, a photo of them holding the phone. The challenge gives bonus points for
+     actually handing it over and telling what they said. -->
 
 ## Code
 
-<!-- TODO: embed the GitHub repo: {% embed https://github.com/<you>/couchy %} -->
+{% embed https://github.com/hetairoii/couchy %}
 
 ## How I Built It
 
-```mermaid
-flowchart LR
-  Phone[Expo app] -- events, voice --> API[FastAPI on DigitalOcean]
-  API --> Gemma[Gemma via Ollama]
-  API --> EL[ElevenLabs TTS + Scribe]
-  API --> Tab[TabPFN risk model]
-  API --> TG[Telegram family bot]
-  API -- pre-generated audio --> Phone
+```
+Android app (Expo / React Native + a small Kotlin module for the alarm)
+        │  events, voice notes
+        ▼
+FastAPI backend (Render) ──► Gemma  (writes, understands, decides)
+        │                ──► ElevenLabs  (voice out, speech in)
+        │                ──► Postgres  (doses, settings)
+        ▼
+Telegram bot ──► family
 ```
 
-- **Gemma is the brain.** It writes ten personalized reminders per medication (using the person's name, family and routine), classifies what {PERSON} says (`taken | snooze | skip | concern | chat`) with structured JSON output, drafts family alerts and writes the weekly report. It never computes numbers and never gives medical advice; every call has a fixed template fallback.
-- **Voice that works offline.** Reminders are generated and voiced ahead of time, then cached on the phone, so the companion speaks even with no internet.
-- **ElevenLabs** voices the companion (`eleven_v3`, with audio tags like `[warmly]`), transcribes spoken replies with Scribe, and narrated this demo.
-- **Analytics are plain pandas**: adherence, punctuality, delay, consistency, response time. The LLM only phrases them.
-- **TabPFN** predicts which upcoming doses are likely to be late, from a few dozen past doses.
-- **DigitalOcean** hosts the API and Gemma (Docker Compose, Caddy for HTTPS).
-- **Telegram** delivers alerts: missed dose (after a configurable grace), no activity for N hours (default 3, silent during quiet hours), and concerns quoted verbatim.
+**Gemma is the brain.** Every piece of "thinking" goes through it, always with structured JSON output validated
+with Pydantic and a fixed fallback if a call fails:
 
-<!-- TODO: a Sentry trace screenshot (latency/tokens per Gemma call) if you added Sentry -->
+1. It writes ten fresh, personal reminders per medicine (it knows [PERSON]'s name, family, likes and routine) so
+   the companion never repeats itself.
+2. It classifies what [PERSON] says out loud (`taken`, `snooze`, `skip`, `concern`, `chat`) and writes the reply,
+   including when to alert the family.
+3. It drafts the family alerts and the weekly summary from numbers computed in pandas, never from the model's
+   own arithmetic.
+
+It never gives medical advice. In production the model is `gemma-4-26b-a4b-it` served through Google AI Studio;
+the repo also runs it fully local with Ollama (`gemma3:4b`) through the included Docker Compose.
+
+**ElevenLabs gives it a voice.** `eleven_v3` voices the pre-generated reminders (with expressive tags like
+`[warmly]`), `eleven_flash_v2_5` voices live replies, and Scribe turns [PERSON]'s speech into text for Gemma.
+Reminders are generated ahead of time and cached on the phone, so the alarm speaks even with no internet. If the
+voice is ever unavailable, the app shows large text and vibrates: it never falls back to a robotic system voice,
+which would confuse the person it is built for.
+
+**The alarm is native.** A small Kotlin module (`mobile/modules/couchy-alarm`) uses `AlarmManager.setAlarmClock`
+and a foreground service on `USAGE_ALARM`, plus a full-screen intent, so it behaves like a real alarm clock and
+survives reboots. A checklist in the caregiver settings walks through the permissions Android requires.
+
+**Designed for an older person.** Large text, 64 dp buttons, one main action per screen, no typing in the daily
+flow, caregiver settings behind a PIN, and an illustrated look that matches the portraits of the companions.
+
+**Deployed for free.** The API runs on Render's free tier with a free Postgres, and I built the app with
+Claude Code as my coding agent.
 
 ## Why Does Open Innovation Matter?
 
-<!-- TODO: edit with real numbers (cost per month, latency you measured) -->
+<!-- TODO: add one concrete number or anecdote if you have it (cost per month, latency, a swap you tried). -->
 
-- **Health data stays on my server.** Medication names and spoken symptoms are processed by Gemma on a machine I control, not by a third-party LLM API.
-- **Zero per-token cost.** The reminder text is generated once, cached, and reused; a 4B model on a small Droplet is enough.
-- **Swappable parts.** `OLLAMA_MODEL=gemma3:1b` for a tiny server, a bigger Gemma for better prose, `VOICE_PROVIDER=piper` to go fully local, one environment variable each.
-- **It works at the moment it matters.** The reminder audio is already on the phone, so an outage cannot silence it.
-- **Honest trade-off:** with ElevenLabs the reminder sentence (including the medicine name) leaves my server for voice synthesis. Piper keeps it fully local at the cost of a less natural voice. Open components made that a choice I could expose, instead of a fixed term of service.
+- **Health data is sensitive.** With an open-weight model the same code runs on a server I control. For a
+  caregiver, "where does my mother's medication list go?" has a real answer: swap one environment variable
+  (`LLM_PROVIDER=ollama`) and the model runs on a laptop.
+- **Zero per-token cost.** Reminders are written once, cached and reused, and an open model has no usage bill, so
+  a family could run this indefinitely.
+- **Swappable parts.** Gemma 4 in the cloud, `gemma3:1b` on a small server, or a local voice with Piper
+  (`VOICE_PROVIDER=piper`): each is one setting, not a rewrite.
+- **Behavior I can change.** The prompts live in a plain file (`docs/prompts.md`) and I tuned the tone, the safety
+  rules and the structured outputs myself, which a closed assistant would not let me do.
+
+**Honest trade-offs.** In production Gemma is hosted by Google, so the "stays on my server" benefit applies to the
+local setup, not to the live demo. And ElevenLabs is not open source: the text of each reminder, including the
+medicine name, goes to it to be voiced.
 
 ## My Agent Session
 
-<!-- TODO: embed the DevRelay session -->
+<!-- TODO: embed the DevRelay session, or link to it. -->
 
 ## Prize Categories
 
-- **Best Use of Gemma**: Gemma (via Ollama) is the agent's brain: personalization, intent classification of spoken replies, alerts and weekly reports.
-- **Best Use of ElevenLabs**: gives the open-source agent a voice (TTS), transcribes {PERSON}'s speech for Gemma (Scribe), and narrates the demo.
-- **Best Use of DigitalOcean**: the API and the open-weight model run on a Droplet.
-- **Best Use of TabPFN**: predicts doses likely to be late from historical dose data.
+- **Best Use of Gemma**: Gemma is the agent's brain: personalised reminders, understanding spoken replies,
+  deciding when to alert the family, and writing alerts and summaries. Runs on Google AI Studio or locally with Ollama.
+- **Best Use of ElevenLabs**: gives the open-source agent a voice (TTS), transcribes [PERSON]'s speech for Gemma
+  (Scribe), and narrates the demo video.
+- **Best Use of Render**: the agent's backend (FastAPI, Telegram watchdog, voice pipeline) runs on Render.
+
+## Limitations and what is next
+
+- The native alarm is Android only; iOS would need a different approach.
+- On Render's free tier the server sleeps after 15 minutes without traffic, so a monitor pings it every 5 minutes.
+- The weekly family report is sent on request (`/report` in Telegram), not yet on a schedule.
+- A risk model that predicts which doses will be late (TabPFN) exists in the repo but is not enabled in production.
