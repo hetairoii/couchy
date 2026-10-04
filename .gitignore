@@ -15,3 +15,7 @@ mobile/android/
 mobile/ios/
 mobile/assets/logo/
 mobile/assets/character icons/
+
+# Gradle build output of local native modules
+mobile/modules/**/android/build/
+mobile/modules/**/android/.gradle/
