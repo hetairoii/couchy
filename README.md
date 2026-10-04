@@ -5,7 +5,7 @@ A warm AI companion that helps an elderly person remember their pills, and keeps
 Built for the DEV **Hacktoberfest 2026 Weekend Challenge: Build for a Friend**.
 
 - **Brain:** Gemma (open-weight) served by Ollama. Writes the reminders, understands spoken replies, drafts family alerts and weekly reports.
-- **Voice:** ElevenLabs TTS and Scribe, with Piper (open source) as automatic fallback (`VOICE_PROVIDER=piper`).
+- **Voice:** ElevenLabs TTS and Scribe. `VOICE_PROVIDER=piper` switches to the open-source Piper voices (fully local); there is no automatic fallback to a different voice.
 - **Offline reminders:** audio is pre-generated and cached on the phone, so the voice plays without internet.
 - **A real alarm:** on Android a native module (`mobile/modules/couchy-alarm`) rings like an alarm clock: on the alarm audio stream (so it sounds on silent / Do Not Disturb), waking the screen and opening Couchy over the lock screen, with the companion's voice naming the medicine, until the person answers.
 - **Never a robotic voice:** if the companion's voice is unavailable the app shows large text and vibrates; it never falls back to a system voice.
@@ -55,7 +55,7 @@ After installing, open *Caregiver settings → Alarm setup* and turn every item 
 
 ## Privacy and limits
 
-Health data stays on your own server. Reminder text (including the medicine name) is sent to ElevenLabs when `VOICE_PROVIDER=elevenlabs`; use `piper` to keep everything on your server. The AI never gives medical advice. The voice plays when the reminder is opened, not from the background.
+Health data stays on your own server. Reminder text (including the medicine name) is sent to ElevenLabs when `VOICE_PROVIDER=elevenlabs`; use `piper` to keep everything on your server. The AI never gives medical advice. On Android the alarm rings from a native foreground service, so it works with the app closed; on iOS (not supported yet) reminders are plain notifications.
 
 ## Challenge note
 
