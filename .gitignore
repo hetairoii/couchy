@@ -22,3 +22,6 @@ mobile/modules/**/android/.gradle/
 
 # Files written by agent tooling installers
 .agents/
+
+# Scratch files from session curation (contain personal data)
+.scratch/
