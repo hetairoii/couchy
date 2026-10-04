@@ -251,4 +251,4 @@ def link_code(device: Device = Depends(auth), session: Session = Depends(get_ses
 @router.get("/health")
 def health():
     return {"ok": True, "model": settings.ollama_model, "voice": settings.voice_provider,
-            "elevenlabs_key_set": bool(settings.elevenlabs_key)}
+            "elevenlabs_key_set": bool(settings.elevenlabs_key), "llm": settings.llm_provider}

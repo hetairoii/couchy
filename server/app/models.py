@@ -85,9 +85,15 @@ _engine = None
 def get_engine():
     global _engine
     if _engine is None:
-        settings.data_dir.mkdir(parents=True, exist_ok=True)
-        _engine = create_engine(f"sqlite:///{settings.data_dir / 'couchy.db'}",
-                                connect_args={"check_same_thread": False})
+        if settings.database_url:  # e.g. a free Neon/Supabase Postgres, survives restarts
+            url = settings.database_url.replace("postgres://", "postgresql://", 1)
+            if url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+            _engine = create_engine(url, pool_pre_ping=True)
+        else:
+            settings.data_dir.mkdir(parents=True, exist_ok=True)
+            _engine = create_engine(f"sqlite:///{settings.data_dir / 'couchy.db'}",
+                                    connect_args={"check_same_thread": False})
         SQLModel.metadata.create_all(_engine)
     return _engine
 

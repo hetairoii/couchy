@@ -1,0 +1,29 @@
+# Render Blueprint: free web service for the Couchy API (no credit card needed).
+# Gemma is served by Google AI Studio (LLM_PROVIDER=google) and the database is a free Postgres (DATABASE_URL).
+services:
+  - type: web
+    name: couchy-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: LLM_PROVIDER
+        value: google
+      - key: GOOGLE_MODEL
+        value: gemma-3-27b-it
+      - key: VOICE_PROVIDER
+        value: elevenlabs
+      - key: TELEGRAM_BOT_USERNAME
+        value: youfriendcouchy_bot
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
