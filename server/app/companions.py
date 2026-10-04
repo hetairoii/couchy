@@ -30,3 +30,15 @@ COMPANIONS = {
 
 def get_companion(companion_id: str) -> dict:
     return COMPANIONS.get(companion_id, COMPANIONS["grace"])
+
+
+def fixed_phrases(name: str) -> dict[str, str]:
+    """Short spoken lines the app plays in the companion's voice (never a system voice)."""
+    return {
+        "due": f"{name}, it's time to take your medicine.",
+        "well_done": "Well done! See you next time.",
+        "snooze_ok": "Okay, I'll remind you again in ten minutes.",
+        "skip_ok": "Okay. I'll let your family know.",
+        "help_listening": "I'm listening. Tell me what is happening, then tap again to send.",
+        "help_sent": "I've told your family. They will contact you very soon.",
+    }

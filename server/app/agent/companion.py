@@ -44,6 +44,7 @@ _ALERT_TEMPLATES = {
     "missed_dose": "{name} has not confirmed {medication} (due {scheduled_time}). Their phone may be offline. Please give them a call.",
     "inactivity": "No activity from {name} since {last_activity}. Their phone may be offline. Please check in.",
     "concern": "{name} told Couchy: \"{transcript}\". Please call them.",
+    "help_request": "{name} pressed the help button and said: \"{transcript}\". Please call them right away.",
 }
 
 

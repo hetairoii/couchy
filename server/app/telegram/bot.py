@@ -15,25 +15,48 @@ def _url(method: str) -> str:
     return f"https://api.telegram.org/bot{settings.telegram_token}/{method}"
 
 
-async def send_message(chat_id: int, text: str) -> None:
+async def _post(method: str, **kwargs) -> bool:
+    """Returns True when Telegram accepted the request."""
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(_url(method), **kwargs)
+        if r.status_code != 200:
+            log.warning("telegram %s failed: HTTP %s %s", method, r.status_code, r.text[:200])
+        return r.status_code == 200
+    except Exception as exc:
+        log.warning("telegram %s error: %s", method, exc)
+        return False
+
+
+async def send_message(chat_id: int, text: str) -> bool:
     if not settings.telegram_token:
         log.info("[telegram disabled] to %s: %s", chat_id, text)
-        return
-    async with httpx.AsyncClient(timeout=30) as client:
-        await client.post(_url("sendMessage"), json={"chat_id": chat_id, "text": text})
+        return False
+    return await _post("sendMessage", json={"chat_id": chat_id, "text": text})
 
 
-async def send_audio(chat_id: int, audio: bytes, filename: str, caption: str = "") -> None:
+async def send_audio(chat_id: int, audio: bytes, filename: str, caption: str = "") -> bool:
     if not settings.telegram_token:
-        return
-    async with httpx.AsyncClient(timeout=60) as client:
-        await client.post(_url("sendAudio"), data={"chat_id": chat_id, "caption": caption[:1000]},
-                          files={"audio": (filename, audio)})
+        return False
+    return await _post("sendAudio", data={"chat_id": chat_id, "caption": caption[:1000]},
+                       files={"audio": (filename, audio)})
 
 
-async def notify_family(device: Device, text: str) -> None:
+async def send_voice(chat_id: int, audio: bytes, filename: str = "help.m4a", caption: str = "") -> bool:
+    """Voice note (m4a/mp3/ogg). Falls back to a regular audio file if Telegram rejects it as a voice message."""
+    if not settings.telegram_token:
+        return False
+    ok = await _post("sendVoice", data={"chat_id": chat_id, "caption": caption[:1000]},
+                     files={"voice": (filename, audio)})
+    return ok or await send_audio(chat_id, audio, filename, caption)
+
+
+async def notify_family(device: Device, text: str) -> int:
+    """Sends `text` to every linked family chat. Returns how many chats received it."""
+    delivered = 0
     for chat_id in device.telegram_chat_ids or []:
-        await send_message(chat_id, text)
+        delivered += await send_message(chat_id, text)
+    return delivered
 
 
 def link_chat(session: Session, code: str, chat_id: int) -> Device | None:

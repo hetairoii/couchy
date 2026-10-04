@@ -26,6 +26,7 @@ class Settings:
     database_url = os.getenv("DATABASE_URL", "")
     voice_provider = os.getenv("VOICE_PROVIDER", "elevenlabs")
     elevenlabs_key = os.getenv("ELEVENLABS_API_KEY", "")
+    elevenlabs_stt_model = os.getenv("ELEVENLABS_STT_MODEL", "scribe_v1")
     telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_username = os.getenv("TELEGRAM_BOT_USERNAME", "CouchyBot")
     data_dir = Path(os.getenv("DATA_DIR", "./data"))

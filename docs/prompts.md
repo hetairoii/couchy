@@ -33,7 +33,7 @@ Return JSON: {{"intent": "...", "minutes_ago": null, "reply": "...", "notify_fam
 Write a brief Telegram alert (max 45 words) for the family of {preferred_name}.
 Situation: {alert_type}
 Facts: {facts_json}
-State the facts calmly and clearly. For missed_dose/inactivity mention the phone might be offline. For concern, quote their words exactly. Suggest calling {preferred_name}. No medical advice.
+State the facts calmly and clearly. For missed_dose/inactivity mention the phone might be offline. For concern and help_request, quote their words exactly; for help_request say they pressed the help button and ask the family to call right away. Suggest calling {preferred_name}. No medical advice.
 Return JSON: {{"text": "..."}}
 ```
 
