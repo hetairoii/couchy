@@ -1,7 +1,9 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
+import { alarmAvailable, scheduleAlarms, scheduleSnoozeAlarm } from './alarm';
 import { doseId } from './doses';
 import { listMeds } from './db';
+import type { Med } from './types';
 
 const CHANNEL = 'dose-reminders';
 
@@ -40,9 +42,14 @@ export async function requestPermissions(): Promise<boolean> {
 
 /** Re-creates every daily/weekly reminder from the medication list. Call after any schedule change. */
 export async function rescheduleAll() {
+  const meds = await listMeds();
+  if (alarmAvailable) {
+    // Real alarm clock (rings even when muted); plain notifications would only duplicate it.
+    await N?.cancelAllScheduledNotificationsAsync();
+    return scheduleAlarms(meds);
+  }
   if (!N) return;
   await N.cancelAllScheduledNotificationsAsync();
-  const meds = await listMeds();
   for (const med of meds) {
     for (const time of med.times) {
       const [hour, minute] = time.split(':').map(Number);
@@ -69,10 +76,11 @@ export async function rescheduleAll() {
   }
 }
 
-export async function scheduleSnooze(medId: string, time: string, minutes = 10) {
+export async function scheduleSnooze(med: Med, time: string, minutes = 10) {
+  if (alarmAvailable) return scheduleSnoozeAlarm(med, time, minutes);
   if (!N) return;
   await N.scheduleNotificationAsync({
-    content: { title: 'Gentle reminder', body: 'Your pills are still waiting', data: { medId, time }, sound: true },
+    content: { title: 'Gentle reminder', body: 'Your pills are still waiting', data: { medId: med.id, time }, sound: true },
     trigger: { type: N.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: minutes * 60, channelId: CHANNEL },
   });
 }

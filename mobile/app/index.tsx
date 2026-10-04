@@ -8,6 +8,7 @@ import { dosesForDay } from '../src/doses';
 import { flushOutbox } from '../src/sync';
 import { colors } from '../src/theme';
 import type { Dose, Med, Profile } from '../src/types';
+import { HelpButton } from '../src/HelpButton';
 import { BigButton, Body, Card, Chip, Title } from '../src/ui';
 
 const statusColor = (s: Dose['status']) =>
@@ -91,7 +92,8 @@ export default function Home() {
           </Card>
         ))}
 
-        <BigButton label="Medications" variant="secondary" onPress={() => router.push('/meds')} />
+        <HelpButton />
+        <BigButton label="Medications" variant="secondary"onPress={() => router.push('/meds')} />
         <BigButton label="Caregiver settings" variant="secondary" onPress={() => router.push('/settings')} />
       </ScrollView>
     </SafeAreaView>

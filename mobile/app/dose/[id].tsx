@@ -1,106 +1,127 @@
-import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { absolute, sendVoiceReply } from '../../src/api';
-import { playUri, speakFallback, stopPlayback } from '../../src/audio';
+import { absolute, ApiError, sendVoiceReply } from '../../src/api';
+import { refreshAlarmAudio, stopAlarm } from '../../src/alarm';
+import { playPhrase, playUri, stopPlayback } from '../../src/audio';
 import { companionById } from '../../src/companions';
 import { getDose, getProfile, listMeds, nextMessage, updateDose } from '../../src/db';
 import { scheduleSnooze } from '../../src/notifications';
 import { flushOutbox } from '../../src/sync';
 import { colors, TOUCH } from '../../src/theme';
 import type { Dose, Med, Profile } from '../../src/types';
+import { useVoiceRecorder } from '../../src/useVoiceRecorder';
 import { BigButton, Body, Card, Title } from '../../src/ui';
+import { HelpButton } from '../../src/HelpButton';
 
 const MAX_SNOOZES = 3;
 
 export default function DoseScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // fromAlarm: the native alarm is already playing the voice, so this screen must not play it twice.
+  const { id, fromAlarm } = useLocalSearchParams<{ id: string; fromAlarm?: string }>();
   const [dose, setDose] = useState<Dose | null>(null);
   const [med, setMed] = useState<Med | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [said, setSaid] = useState<string | null>(null); // what the companion says (text of the voice message)
   const [heard, setHeard] = useState<string | null>(null);
-  const [recording, setRecording] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const { recording, start, stop } = useVoiceRecorder(60_000, () => void sendRecording());
   const started = useRef(false);
 
   useEffect(() => {
     (async () => {
       const d = await getDose(id);
       if (!d) return router.replace('/');
-      const m = (await listMeds()).find((x) => x.id === d.medId) ?? null;
+      const allMeds = await listMeds();
+      const m = allMeds.find((x) => x.id === d.medId) ?? null;
       const p = await getProfile();
       setDose(d); setMed(m); setProfile(p);
       if (started.current || !m) return;
       started.current = true;
       if (!d.openedAt) await updateDose(d.id, { openedAt: new Date().toISOString() });
-      if (d.status === 'taken') return;
-      // Cached ElevenLabs audio plays offline; otherwise fall back to on-device speech.
+      if (d.status === 'taken' || d.status === 'skipped') return void stopAlarm();
       const msg = await nextMessage(m.id);
-      if (msg?.audioPath) await playUri(msg.audioPath);
-      else speakFallback(msg?.text ?? `Time for your ${m.name}, ${p.preferredName}.`);
+      setSaid(msg?.text ?? `It is time to take your ${m.name}.`);
+      if (!fromAlarm) {
+        if (msg?.audioPath) await playUri(msg.audioPath);
+        else Vibration.vibrate([0, 400, 200, 400]); // no voice available: show the text and vibrate
+      }
+      void refreshAlarmAudio(allMeds); // the alarm now gets the next message
     })();
     return () => stopPlayback();
-  }, [id]);
+  }, [id, fromAlarm]);
 
   if (!dose || !med || !profile) return null;
   const companion = companionById(profile.companionId);
   const localTime = new Date(dose.scheduledAt);
   const hhmm = `${String(localTime.getHours()).padStart(2, '0')}:${String(localTime.getMinutes()).padStart(2, '0')}`;
 
-  async function finish(patch: Parameters<typeof updateDose>[1], goodbye: string) {
+  async function finish(patch: Parameters<typeof updateDose>[1], phrase: Parameters<typeof playPhrase>[0]) {
     stopPlayback();
+    await stopAlarm();
     await updateDose(dose!.id, patch);
-    speakFallback(goodbye);
+    void playPhrase(phrase);
     void flushOutbox();
     setDose((await getDose(dose!.id)) ?? dose);
-    setTimeout(() => router.replace('/'), 1800);
+    setTimeout(() => router.replace('/'), 2500);
   }
 
   const took = async () => {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await finish({ status: 'taken', takenAt: new Date().toISOString(), source: 'button' }, 'Well done. See you next time.');
+    await finish({ status: 'taken', takenAt: new Date().toISOString(), source: 'button' }, 'well_done');
   };
 
   const snooze = async () => {
-    await scheduleSnooze(med.id, hhmm, 10);
-    await finish({ status: 'snoozed', snoozeCount: dose.snoozeCount + 1 }, "Okay, I'll remind you again in ten minutes.");
+    await scheduleSnooze(med, hhmm, 10);
+    await finish({ status: 'snoozed', snoozeCount: dose.snoozeCount + 1 }, 'snooze_ok');
   };
 
   const skip = () =>
     Alert.alert('Skip this dose?', 'Your family will be told that you skipped it.', [
       { text: 'No, go back', style: 'cancel' },
-      { text: 'Skip it', style: 'destructive', onPress: () => void finish({ status: 'skipped' }, 'Okay.') },
+      { text: 'Skip it', style: 'destructive', onPress: () => void finish({ status: 'skipped' }, 'skip_ok') },
     ]);
 
-  async function startTalking() {
-    const { granted } = await requestRecordingPermissionsAsync();
-    if (!granted) return Alert.alert('Microphone needed', 'Please allow the microphone to talk to ' + companion.name);
-    stopPlayback();
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    setRecording(true);
+  async function talk() {
+    if (busy) return;
+    if (recording) return sendRecording();
+    setNotice(null);
+    await stopAlarm();
+    if (!(await start())) setNotice('I need the microphone to listen. Please allow it in the phone settings, or tap a button.');
   }
 
-  async function stopTalking() {
-    if (!recording) return;
-    setRecording(false);
+  async function sendRecording() {
+    const rec = await stop();
+    if (!rec) return setNotice("I didn't hear anything. Tap the microphone and try again.");
     setBusy(true);
     try {
-      await recorder.stop();
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-      const r = await sendVoiceReply(dose!.id, recorder.uri!);
+      const r = await sendVoiceReply(dose!, rec.uri);
       setHeard(r.transcript);
-      await playUri(absolute(r.audio_url));
-      setDose((prev) => (prev ? { ...prev, status: r.dose_status } : prev));
-      if (r.dose_status === 'taken' || r.dose_status === 'skipped') setTimeout(() => router.replace('/'), 3500);
-    } catch {
-      setHeard(null);
-      Alert.alert("I couldn't hear you", 'Please tap one of the big buttons instead.');
+      setSaid(r.reply);
+      if (r.audio_url) await playUri(absolute(r.audio_url));
+      else Vibration.vibrate(300);
+      // Keep the phone in step with what the server decided, or the old status would overwrite it on the next sync.
+      if (r.dose_status !== dose!.status) {
+        await updateDose(dose!.id, {
+          status: r.dose_status, source: 'voice',
+          ...(r.dose_status === 'taken' ? { takenAt: r.taken_at ?? new Date().toISOString() } : {}),
+          ...(r.dose_status === 'snoozed' ? { snoozeCount: dose!.snoozeCount + 1 } : {}),
+        });
+        setDose((await getDose(dose!.id)) ?? dose);
+        if (r.dose_status === 'taken' || r.dose_status === 'skipped') {
+          await stopAlarm();
+          setTimeout(() => router.replace('/'), 4000);
+        }
+      }
+      void flushOutbox();
+    } catch (e) {
+      setNotice(
+        e instanceof TypeError ? 'There is no internet right now. Please tap one of the big buttons.'
+          : e instanceof ApiError && e.status === 422 ? "I didn't hear anything. Tap the microphone and try again."
+            : "I couldn't understand that. Please tap one of the big buttons.");
     } finally {
       setBusy(false);
     }
@@ -119,6 +140,8 @@ export default function DoseScreen() {
           <Body muted>{companion.name}</Body>
         </View>
 
+        {!!said && <Card><Text style={{ fontSize: 24, color: colors.text, lineHeight: 32 }}>{said}</Text></Card>}
+
         <Card style={{ borderLeftWidth: 14, borderLeftColor: med.color }}>
           <Text style={{ fontSize: 36, fontWeight: '800', color: colors.text }}>{med.name}</Text>
           {!!med.dosage && <Title>{med.dosage}</Title>}
@@ -135,15 +158,19 @@ export default function DoseScreen() {
             <BigButton label="I took it ✓" onPress={took} />
             <BigButton label={dose.snoozeCount >= MAX_SNOOZES ? 'No more snoozes' : 'Remind me in 10 min'}
               variant="secondary" onPress={snooze} disabled={dose.snoozeCount >= MAX_SNOOZES} />
-            <Pressable accessibilityRole="button" accessibilityLabel={`Hold and talk to ${companion.name}`}
-              onPressIn={startTalking} onPressOut={stopTalking} disabled={busy}
+            <Pressable accessibilityRole="button" accessibilityLabel={`Talk to ${companion.name}`}
+              onPress={talk} disabled={busy}
               style={{ minHeight: TOUCH + 16, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-                backgroundColor: recording ? colors.danger : colors.accent, opacity: busy ? 0.6 : 1 }}>
-              <Text style={{ fontSize: 24, fontWeight: '800', color: '#1B1B1B' }}>
-                {busy ? 'Listening...' : recording ? 'Release to send' : `🎤 Hold to talk to ${companion.name}`}
+                backgroundColor: recording ? colors.danger : colors.accent, opacity: busy ? 0.6 : 1,
+                paddingHorizontal: 12 }}>
+              <Text style={{ fontSize: 24, fontWeight: '800', color: recording ? '#fff' : '#1B1B1B', textAlign: 'center' }}>
+                {busy ? 'Listening...' : recording ? 'Tap here to send' : `🎤 Tell ${companion.name}`}
               </Text>
             </Pressable>
+            {recording && <Card><Body>I'm listening. Say what you want, then tap again.</Body></Card>}
             {heard && <Card><Body muted>You said:</Body><Body>"{heard}"</Body></Card>}
+            {!!notice && <Card><Body>{notice}</Body></Card>}
+            <HelpButton />
             <BigButton label="Skip this dose" variant="secondary" onPress={skip} />
           </>
         )}

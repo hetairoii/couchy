@@ -211,7 +211,8 @@ async def voice_reply(dose_event_id: str = Form(...), audio: UploadFile = File(.
     await apply_intent(session, device, dose, result, transcript, now)
     reply_audio = await tts.synthesize_or_none(result.reply, device.companion_id, "eleven_flash_v2_5")
     return {"transcript": transcript, "intent": result.intent, "reply": result.reply,
-            "audio_url": f"/audio/{reply_audio}" if reply_audio else None, "dose_status": dose.status}
+            "audio_url": f"/audio/{reply_audio}" if reply_audio else None, "dose_status": dose.status,
+            "taken_at": dose.taken_at.isoformat() + "Z" if dose.taken_at else None}
 
 
 async def apply_intent(session: Session, device: Device, dose: DoseEvent, result, transcript: str, now: datetime):

@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteMed, listMeds, saveMed } from '../src/db';
 import { parseTimes } from '../src/doses';
 import { isExpoGo, requestPermissions, rescheduleAll } from '../src/notifications';
-import { prefetchMessages, pushConfig } from '../src/sync';
+import { syncVoice } from '../src/sync';
 import { colors, TOUCH } from '../src/theme';
 import type { Med } from '../src/types';
 import { BigButton, Body, Card, Field, Title } from '../src/ui';
@@ -47,14 +47,14 @@ export default function Meds() {
     if (isExpoGo) Alert.alert('Saved', 'Reminders only fire in a development build; Expo Go cannot schedule them.');
     else if (await requestPermissions()) await rescheduleAll();
     else Alert.alert('Notifications are off', 'Reminders need notification permission. You can enable it in Settings.');
-    void pushConfig().then(prefetchMessages);
+    void syncVoice();
   }
 
   async function remove(m: Med) {
     Alert.alert(`Delete ${m.name}?`, 'Its reminders will stop.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
-        await deleteMed(m.id); await refresh(); await rescheduleAll(); void pushConfig();
+        await deleteMed(m.id); await refresh(); await rescheduleAll(); void syncVoice();
       } },
     ]);
   }

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompanionPicker } from '../src/CompanionPicker';
 import { getProfile, setProfile } from '../src/db';
 import { stopPlayback } from '../src/audio';
-import { pushConfig } from '../src/sync';
+import { syncVoice } from '../src/sync';
 import { BigButton, Body, Field, Title } from '../src/ui';
 
 const split = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
@@ -24,7 +24,7 @@ export default function Onboarding() {
       ...p, preferredName: name.trim(), familyNames: split(family), likes: split(likes),
       routineNotes: routine.trim(), companionId,
     });
-    void pushConfig();
+    void syncVoice();
     router.replace('/meds');
   }
 

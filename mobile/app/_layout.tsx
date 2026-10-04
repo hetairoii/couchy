@@ -36,7 +36,8 @@ export default function RootLayout() {
       }}>
         <Stack.Screen name="index" options={{ title: 'Couchy', headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ title: 'Welcome', headerBackVisible: false }} />
-        <Stack.Screen name="meds" options={{ title: 'Medications' }} />
+        <Stack.Screen name="alarm" options={{ headerShown: false }} />
+        <Stack.Screen name="meds"options={{ title: 'Medications' }} />
         <Stack.Screen name="dose/[id]" options={{ title: 'Time for your pills', headerBackVisible: false }} />
         <Stack.Screen name="settings" options={{ title: 'Caregiver settings' }} />
         <Stack.Screen name="insights" options={{ title: 'Insights' }} />

@@ -114,19 +114,36 @@ export async function markClean(ids: string[]) {
 
 export type CachedMessage = { id: number; medId: string; text: string; audioPath: string | null };
 
-export async function nextMessage(medId: string): Promise<CachedMessage | null> {
-  const d = await db();
-  const r = await d.getFirstAsync<{ id: number; med_id: string; text: string; audio_path: string | null }>(
-    'SELECT * FROM messages WHERE med_id = ? AND used = 0 ORDER BY id LIMIT 1', medId);
-  if (!r) return null;
-  await d.runAsync('UPDATE messages SET used = 1 WHERE id = ?', r.id);
-  return { id: r.id, medId: r.med_id, text: r.text, audioPath: r.audio_path };
+type MessageRow = { id: number; med_id: string; text: string; audio_path: string | null };
+const toMessage = (r: MessageRow): CachedMessage => ({ id: r.id, medId: r.med_id, text: r.text, audioPath: r.audio_path });
+
+// Messages that have the companion's voice come first; text-only ones are a last resort.
+const NEXT = 'SELECT * FROM messages WHERE med_id = ? AND used = 0 ORDER BY (audio_path IS NULL), id LIMIT 1';
+
+/** Looks at the next message without consuming it (used to hand the audio to the alarm). */
+export async function peekMessage(medId: string): Promise<CachedMessage | null> {
+  const r = await (await db()).getFirstAsync<MessageRow>(NEXT, medId);
+  return r ? toMessage(r) : null;
 }
 
+export async function nextMessage(medId: string): Promise<CachedMessage | null> {
+  const d = await db();
+  const r = await d.getFirstAsync<MessageRow>(NEXT, medId);
+  if (!r) return null;
+  await d.runAsync('UPDATE messages SET used = 1 WHERE id = ?', r.id);
+  return toMessage(r);
+}
+
+/** Only messages with audio count: text-only ones should be replaced as soon as the voice is back. */
 export async function unusedMessageCount(medId: string): Promise<number> {
   const r = await (await db()).getFirstAsync<{ n: number }>(
-    'SELECT COUNT(*) AS n FROM messages WHERE med_id = ? AND used = 0', medId);
+    'SELECT COUNT(*) AS n FROM messages WHERE med_id = ? AND used = 0 AND audio_path IS NOT NULL', medId);
   return r?.n ?? 0;
+}
+
+/** Drops every cached message (e.g. the companion changed, so old audio would play the wrong voice). */
+export async function clearMessages() {
+  await (await db()).runAsync('DELETE FROM messages');
 }
 
 export async function addMessage(medId: string, text: string, audioPath: string | null) {

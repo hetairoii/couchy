@@ -5,12 +5,19 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8010'
 
 type Creds = { deviceId: string; apiKey: string };
 
+/** The server answered with an error status (as opposed to a network failure, which throws TypeError). */
+export class ApiError extends Error {
+  constructor(public status: number, public path: string) {
+    super(`${path} -> ${status}`);
+  }
+}
+
 async function call<T>(path: string, init: RequestInit = {}, creds?: Creds): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
   if (creds) headers['X-API-Key'] = creds.apiKey;
   if (typeof init.body === 'string') headers['Content-Type'] = 'application/json';
   const res = await fetch(`${API_URL}${path}`, { ...init, headers });
-  if (!res.ok) throw new Error(`${path} -> ${res.status}`);
+  if (!res.ok) throw new ApiError(res.status, path);
   return res.json() as Promise<T>;
 }
 
@@ -61,7 +68,8 @@ export async function pushEvents(doses: Dose[]) {
   }, c);
 }
 
-export type MessageOut = { text: string; audio_url: string };
+/** audio_url is null when the companion's voice could not be generated: show the text only. */
+export type MessageOut = { text: string; audio_url: string | null };
 
 export async function fetchMessages(medId: string, timeOfDay: string, count = 10): Promise<MessageOut[]> {
   const c = await credentials();
@@ -70,16 +78,36 @@ export async function fetchMessages(medId: string, timeOfDay: string, count = 10
   }, c);
 }
 
+export type PhraseKey = 'due' | 'well_done' | 'snooze_ok' | 'skip_ok' | 'help_listening' | 'help_sent';
+
+export async function getPhrases() {
+  const c = await credentials();
+  return call<Record<PhraseKey, MessageOut>>(`/devices/${c.deviceId}/phrases`, {}, c);
+}
+
 export type VoiceReplyOut = {
-  transcript: string; intent: string; reply: string; audio_url: string; dose_status: Dose['status'];
+  transcript: string; intent: string; reply: string; audio_url: string | null;
+  dose_status: Dose['status']; taken_at: string | null;
 };
 
-export async function sendVoiceReply(doseId: string, audioUri: string): Promise<VoiceReplyOut> {
+export async function sendVoiceReply(dose: Dose, audioUri: string): Promise<VoiceReplyOut> {
   const c = await credentials();
   const form = new FormData();
-  form.append('dose_event_id', doseId);
+  form.append('dose_event_id', dose.id);
+  form.append('medication_id', dose.medId); // lets the server create the dose if it has not synced yet
+  form.append('scheduled_at', dose.scheduledAt);
   form.append('audio', { uri: audioUri, name: 'reply.m4a', type: 'audio/mp4' } as unknown as Blob);
   return call(`/devices/${c.deviceId}/voice/reply`, { method: 'POST', body: form }, c);
+}
+
+export type HelpOut = { notified: number; linked: number };
+
+/** Tells every linked relative (Telegram) that the person needs help. The audio note is optional. */
+export async function sendHelp(audioUri: string | null): Promise<HelpOut> {
+  const c = await credentials();
+  const form = new FormData();
+  if (audioUri) form.append('audio', { uri: audioUri, name: 'help.m4a', type: 'audio/mp4' } as unknown as Blob);
+  return call(`/devices/${c.deviceId}/help`, { method: 'POST', body: form }, c);
 }
 
 export const getInsights = async (days = 7) => {
@@ -91,9 +119,18 @@ export const getInsights = async (days = 7) => {
   }>(`/devices/${c.deviceId}/insights?days=${days}`, {}, c);
 };
 
+export type LinkCode = { code: string; deep_link: string };
+
+/** The same code every time: all relatives use one link. */
 export async function getLinkCode() {
   const c = await credentials();
-  return call<{ code: string; deep_link: string }>(`/devices/${c.deviceId}/family/link-code`, { method: 'POST' }, c);
+  return call<LinkCode>(`/devices/${c.deviceId}/family/link-code`, {}, c);
+}
+
+/** Replaces the code (relatives already linked stay linked). Only on purpose. */
+export async function rotateLinkCode() {
+  const c = await credentials();
+  return call<LinkCode>(`/devices/${c.deviceId}/family/link-code/rotate`, { method: 'POST' }, c);
 }
 
 export const getPreview = (companionId: string) =>

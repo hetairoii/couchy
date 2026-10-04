@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getLinkCode } from '../src/api';
+import { getLinkCode, rotateLinkCode, type LinkCode } from '../src/api';
+import { AlarmSetup } from '../src/AlarmSetup';
 import { CompanionPicker } from '../src/CompanionPicker';
 import { getKV, getProfile, setKV, setProfile } from '../src/db';
 import { stopPlayback } from '../src/audio';
-import { pushConfig } from '../src/sync';
+import { syncVoice } from '../src/sync';
 import type { Profile } from '../src/types';
 import { BigButton, Body, Card, Field, Title } from '../src/ui';
 
@@ -44,7 +45,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 export default function Settings() {
   const [unlocked, setUnlocked] = useState(false);
   const [p, setP] = useState<Profile | null>(null);
-  const [link, setLink] = useState<{ code: string; deep_link: string } | null>(null);
+  const [link, setLink] = useState<LinkCode | null>(null);
   const [linkError, setLinkError] = useState(false);
 
   useEffect(() => {
@@ -57,11 +58,19 @@ export default function Settings() {
   if (!unlocked) return <PinGate onOk={() => setUnlocked(true)} />;
   if (!p) return null;
 
+  function newCode() {
+    Alert.alert('Create a new code?',
+      'The old link will stop working for new relatives. Relatives already connected stay connected.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Create new code', onPress: () => rotateLinkCode().then(setLink).catch(() => setLinkError(true)) },
+      ]);
+  }
+
   const num = (v: string, fallback: number) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : fallback);
 
   async function save() {
     await setProfile(p!);
-    void pushConfig();
+    void syncVoice();
     router.back();
   }
 
@@ -78,7 +87,11 @@ export default function Settings() {
               <Body muted>{link.deep_link}</Body>
             </View>
           ) : <Body muted>{linkError ? 'Could not reach the server. Try again later.' : 'Loading...'}</Body>}
+          <Body muted>Every relative uses this same link. It never changes unless you create a new one.</Body>
+          {link && <BigButton label="Create a new code" variant="secondary" onPress={newCode} />}
         </Card>
+
+        <AlarmSetup />
 
         <Title>Alert timing</Title>
         <Field label="Alert family after this many minutes late" keyboardType="number-pad"
