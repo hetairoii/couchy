@@ -36,8 +36,8 @@ APK: <!-- TODO: link to the GitHub Release -->  ·  Backend: https://couchy-api.
 
 ## What [PERSON] said
 
-<!-- TODO: their reaction, a quote, a photo of them holding the phone. The challenge gives bonus points for
-     actually handing it over and telling what they said. -->
+<!-- TODO: their reaction in words, no photo needed: one quote or a short paragraph. The challenge gives bonus
+     points for actually handing it over and telling what they said. You can keep their identity private. -->
 
 ## Code
 
