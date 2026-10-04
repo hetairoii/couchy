@@ -52,7 +52,7 @@ async def _ollama(prompt: str, model_cls: type[BaseModel], temperature: float) -
         "format": model_cls.model_json_schema(),
         "options": {"temperature": temperature, "num_predict": 500},
     }
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=180) as client:
         r = await client.post(f"{settings.ollama_url}/api/chat", json=payload)
         r.raise_for_status()
     return json.loads(r.json()["message"]["content"])
@@ -66,7 +66,7 @@ async def _google(prompt: str, model_cls: type[BaseModel], temperature: float) -
         "generationConfig": {"temperature": temperature, "maxOutputTokens": 600},
     }
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.google_model}:generateContent"
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=180) as client:
         r = await client.post(url, json=body, headers={"x-goog-api-key": settings.google_api_key})
         r.raise_for_status()
     return extract_json(r.json()["candidates"][0]["content"]["parts"][0]["text"])
