@@ -5,6 +5,7 @@ import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteMed, listMeds, saveMed } from '../src/db';
 import { parseTimes } from '../src/doses';
+import { alarmAvailable, alarmStatus } from '../src/alarm';
 import { isExpoGo, requestPermissions, rescheduleAll } from '../src/notifications';
 import { syncVoice } from '../src/sync';
 import { colors, TOUCH } from '../src/theme';
@@ -48,6 +49,14 @@ export default function Meds() {
     else if (await requestPermissions()) await rescheduleAll();
     else Alert.alert('Notifications are off', 'Reminders need notification permission. You can enable it in Settings.');
     void syncVoice();
+    if (alarmAvailable) {
+      const status = await alarmStatus();
+      if (status && Object.values(status).some((ok) => !ok)) {
+        Alert.alert('One more step',
+          'So the alarm rings even when the phone is muted or locked, open Caregiver settings and turn on every item under "Alarm setup".',
+          [{ text: 'Later', style: 'cancel' }, { text: 'Open settings', onPress: () => router.push('/settings') }]);
+      }
+    }
   }
 
   async function remove(m: Med) {

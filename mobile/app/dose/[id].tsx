@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { absolute, ApiError, sendVoiceReply } from '../../src/api';
 import { refreshAlarmAudio, stopAlarm } from '../../src/alarm';
 import { playPhrase, playUri, stopPlayback } from '../../src/audio';
+import { Avatar } from '../../src/Avatar';
 import { companionById } from '../../src/companions';
 import { getDose, getProfile, listMeds, nextMessage, updateDose } from '../../src/db';
 import { scheduleSnooze } from '../../src/notifications';
@@ -43,6 +44,7 @@ export default function DoseScreen() {
       started.current = true;
       if (!d.openedAt) await updateDose(d.id, { openedAt: new Date().toISOString() });
       if (d.status === 'taken' || d.status === 'skipped') return void stopAlarm();
+      if (!fromAlarm) await stopAlarm(); // opened by hand while the alarm rings: avoid two voices at once
       const msg = await nextMessage(m.id);
       setSaid(msg?.text ?? `It is time to take your ${m.name}.`);
       if (!fromAlarm) {
@@ -133,10 +135,7 @@ export default function DoseScreen() {
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
         <View style={{ alignItems: 'center', gap: 8 }}>
-          <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: companion.color,
-            alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 52 }}>{companion.avatar}</Text>
-          </View>
+          <Avatar companion={companion} size={112} />
           <Body muted>{companion.name}</Body>
         </View>
 

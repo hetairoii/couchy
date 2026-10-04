@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getPreview, absolute } from './api';
 import { playUri, stopPlayback } from './audio';
+import { Avatar } from './Avatar';
 import { COMPANIONS } from './companions';
 import { colors } from './theme';
 import { Body, Card } from './ui';
@@ -33,10 +34,7 @@ export function CompanionPicker({ value, onChange }: Props) {
             accessibilityLabel={`${c.name}. ${c.tagline}`} onPress={() => choose(c.id)}>
             <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 80,
               borderWidth: selected ? 4 : 1, borderColor: selected ? colors.primary : colors.border }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.color,
-                alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 30 }}>{c.avatar}</Text>
-              </View>
+              <Avatar companion={c} size={72} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>{c.name}</Text>
                 <Body muted>{c.tagline}</Body>

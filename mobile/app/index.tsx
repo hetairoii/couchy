@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Avatar } from '../src/Avatar';
 import { companionById } from '../src/companions';
 import { dosesBetween, ensureDose, getProfile, listMeds, updateDose } from '../src/db';
 import { dosesForDay } from '../src/doses';
@@ -54,10 +55,7 @@ export default function Home() {
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: companion.color,
-            alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 34 }}>{companion.avatar}</Text>
-          </View>
+          <Avatar companion={companion} size={72} />
           <View style={{ flex: 1 }}>
             <Title>{greeting}, {profile.preferredName}</Title>
             <Body muted>{companion.name} is with you today.</Body>

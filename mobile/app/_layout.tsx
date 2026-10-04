@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { openDoseFromNotification } from '../src/reminders';
-import { N, setupNotifications, useLastResponse } from '../src/notifications';
+import { N, rescheduleAll, setupNotifications, useLastResponse } from '../src/notifications';
 import { syncAll } from '../src/sync';
 import { colors } from '../src/theme';
 
@@ -25,7 +25,8 @@ export default function RootLayout() {
     return () => sub?.remove();
   }, []);
 
-  useEffect(() => { void syncAll(); }, []);
+  // Re-arm the alarms on every start (cheap, and covers an app update) and sync with the server.
+  useEffect(() => { void rescheduleAll(); void syncAll(); }, []);
 
   return (
     <>
