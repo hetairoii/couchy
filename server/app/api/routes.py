@@ -335,5 +335,6 @@ async def help_request(background: BackgroundTasks, audio: UploadFile | None = F
 
 @router.get("/health")
 def health():
-    return {"ok": True, "model": settings.ollama_model, "voice": settings.voice_provider,
+    model = settings.google_model if settings.llm_provider == "google" else settings.ollama_model
+    return {"ok": True, "model": model, "voice": settings.voice_provider,
             "elevenlabs_key_set": bool(settings.elevenlabs_key), "llm": settings.llm_provider}
